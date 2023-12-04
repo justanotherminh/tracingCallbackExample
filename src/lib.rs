@@ -20,7 +20,7 @@ struct CustomVisitor {
 }
 
 impl CustomVisitor {
-    fn new(callback: LogFunc) -> Self {
+    fn new() -> Self {
         Self { message: String::from(""), }
     }
 }
@@ -79,7 +79,7 @@ where
         message.push_str(&format!("  level={:?}\n", event.metadata().level()));
         message.push_str(&format!("  target={:?}\n", event.metadata().target()));
         message.push_str(&format!("  name={:?}\n", event.metadata().name()));
-        let mut visitor = CustomVisitor::new(self.callback);
+        let mut visitor = CustomVisitor::new();
         event.record(&mut visitor);
         message.push_str(&visitor.message);
         let c_string = CString::new(message).expect("Failed to convert to CString");
