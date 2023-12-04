@@ -15,55 +15,40 @@ impl CustomLayer {
     }
 }
 
-struct CallbackVisitor {
-    callback: LogFunc
+struct CustomVisitor {
+    message: String
 }
 
-impl CallbackVisitor {
+impl CustomVisitor {
     fn new(callback: LogFunc) -> Self {
-        Self { callback }
+        Self { message: String::from(""), }
     }
 }
 
-impl tracing::field::Visit for CallbackVisitor {
+impl tracing::field::Visit for CustomVisitor {
     fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
         let message = format!("  field={} value={}", field.name(), value);
-        let c_string = CString::new(message).expect("Failed to convert to CString");
-        unsafe {
-            (self.callback)(c_string.as_ptr() as *const c_char, c_string.to_bytes().len() as u32);
-        }
+        self.message.push_str(&message);
     } 
     
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
         let message = format!("  field={} value={}", field.name(), value);
-        let c_string = CString::new(message).expect("Failed to convert to CString");
-        unsafe {
-            (self.callback)(c_string.as_ptr() as *const c_char, c_string.to_bytes().len() as u32);
-        }
+        self.message.push_str(&message);
     }
     
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
         let message = format!("  field={} value={}", field.name(), value);
-        let c_string = CString::new(message).expect("Failed to convert to CString");
-        unsafe {
-            (self.callback)(c_string.as_ptr() as *const c_char, c_string.to_bytes().len() as u32);
-        }
+        self.message.push_str(&message);
     }
     
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
         let message = format!("  field={} value={}", field.name(), value);
-        let c_string = CString::new(message).expect("Failed to convert to CString");
-        unsafe {
-            (self.callback)(c_string.as_ptr() as *const c_char, c_string.to_bytes().len() as u32);
-        }
+        self.message.push_str(&message);
     }
     
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
         let message = format!("  field={} value={}", field.name(), value);
-        let c_string = CString::new(message).expect("Failed to convert to CString");
-        unsafe {
-            (self.callback)(c_string.as_ptr() as *const c_char, c_string.to_bytes().len() as u32);
-        }
+        self.message.push_str(&message);
     }
     
     fn record_error(
@@ -72,18 +57,12 @@ impl tracing::field::Visit for CallbackVisitor {
         value: &(dyn std::error::Error + 'static),
     ) {
         let message = format!("  field={} value={}", field.name(), value);
-        let c_string = CString::new(message).expect("Failed to convert to CString");
-        unsafe {
-            (self.callback)(c_string.as_ptr() as *const c_char, c_string.to_bytes().len() as u32);
-        }
+        self.message.push_str(&message);
     }
     
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
         let message = format!("  field={} value={:?}", field.name(), value);
-        let c_string = CString::new(message).expect("Failed to convert to CString");
-        unsafe {
-            (self.callback)(c_string.as_ptr() as *const c_char, c_string.to_bytes().len() as u32);
-        }
+        self.message.push_str(&message);
     }
 }
 
@@ -100,12 +79,13 @@ where
         message.push_str(&format!("  level={:?}\n", event.metadata().level()));
         message.push_str(&format!("  target={:?}\n", event.metadata().target()));
         message.push_str(&format!("  name={:?}\n", event.metadata().name()));
+        let mut visitor = CustomVisitor::new(self.callback);
+        event.record(&mut visitor);
+        message.push_str(&visitor.message);
         let c_string = CString::new(message).expect("Failed to convert to CString");
         unsafe {
             (self.callback)(c_string.as_ptr() as *const c_char, c_string.to_bytes().len() as u32);
         }
-        let mut visitor = CallbackVisitor::new(self.callback);
-        event.record(&mut visitor);
     }
 }
 
